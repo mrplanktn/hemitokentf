@@ -1,6 +1,5 @@
 require('dotenv').config();
 const fs = require('fs');
-const csv = require('csv-parse');
 const Web3 = require('web3');
 
 // Mengambil variabel dari file .env
@@ -32,50 +31,44 @@ const tokenContract = new web3.eth.Contract(tokenABI, tokenContractAddress);
 // Jumlah token yang ingin dikirim ke setiap penerima (misalnya 1 token = 1 * 10^18)
 const amountToSend = web3.utils.toWei('1', 'ether');
 
-// Membaca file addresses.csv
-const recipientAddresses = [];
+// Membaca file addresses.json
+const rawData = fs.readFileSync('addresses.json');
+const addressesData = JSON.parse(rawData);
+const recipientAddresses = addressesData.addresses;
 
-fs.createReadStream('addresses.csv')
-  .pipe(csv())
-  .on('data', (row) => {
-    recipientAddresses.push(row[0]); // Setiap baris berisi satu alamat
-  })
-  .on('end', () => {
-    console.log('CSV file successfully processed');
+// Fungsi untuk mengirim token ke beberapa alamat
+const sendTokenToMultipleAddresses = async () => {
+  for (let i = 0; i < recipientAddresses.length; i++) {
+    const receiverAddress = recipientAddresses[i];
     
-    // Fungsi untuk mengirim token ke beberapa alamat
-    const sendTokenToMultipleAddresses = async () => {
-      for (let i = 0; i < recipientAddresses.length; i++) {
-        const receiverAddress = recipientAddresses[i];
-        
-        // Membuat data transaksi
-        const data = tokenContract.methods.transfer(receiverAddress, amountToSend).encodeABI();
+    // Membuat data transaksi
+    const data = tokenContract.methods.transfer(receiverAddress, amountToSend).encodeABI();
 
-        // Dapatkan nonce (jumlah transaksi pengirim)
-        const nonce = await web3.eth.getTransactionCount(senderAddress, 'latest');
+    // Dapatkan nonce (jumlah transaksi pengirim)
+    const nonce = await web3.eth.getTransactionCount(senderAddress, 'latest');
 
-        // Membuat objek transaksi
-        const tx = {
-          from: senderAddress,
-          to: tokenContractAddress,
-          nonce: nonce,
-          gas: 2000000, // Sesuaikan jika perlu
-          data: data
-        };
-
-        try {
-          // Menandatangani transaksi dengan private key
-          const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-
-          // Mengirim transaksi ke jaringan Hemi Sepolia
-          const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-          console.log(`Transaction successful to ${receiverAddress} with receipt: `, receipt);
-        } catch (error) {
-          console.error(`Error during transaction to ${receiverAddress}: `, error);
-        }
-      }
+    // Membuat objek transaksi
+    const tx = {
+      from: senderAddress,
+      to: tokenContractAddress,
+      nonce: nonce,
+      gas: 2000000, // Sesuaikan jika perlu
+      data: data
     };
 
-    // Memanggil fungsi untuk mengirim token
-    sendTokenToMultipleAddresses();
-  });
+    try {
+      // Menandatangani transaksi dengan private key
+      const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+
+      // Mengirim transaksi ke jaringan Hemi Sepolia
+      const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+      console.log(`Transaction successful to ${receiverAddress} with receipt: `, receipt);
+    } catch (error) {
+      console.error(`Error during transaction to ${receiverAddress}: `, error);
+    }
+  }
+};
+
+// Memanggil fungsi untuk mengirim token
+sendTokenToMultipleAddresses();
+
