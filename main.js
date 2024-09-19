@@ -9,7 +9,8 @@ const senderAddress = process.env.SENDER_ADDRESS;
 const tokenContractAddress = process.env.TOKEN_CONTRACT_ADDRESS;
 
 // Membuat instance Web3
-const web3 = new Web3(rpcURL);
+const web3 = new Web3(new Web3.providers.HttpProvider(rpcURL));
+
 
 // ABI minimal untuk transfer ERC-20
 const tokenABI = [
